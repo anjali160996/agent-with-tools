@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Question Generation System</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar with session list -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Sessions</h2>
+                <button id="refreshSessionsBtn" class="btn-icon" title="Refresh">↻</button>
+            </div>
+            <button id="newSessionBtn" class="btn btn-primary btn-sidebar">+ New Session</button>
+            <div id="sessionsList" class="sessions-list">
+                <p class="loading-text">Loading sessions...</p>
+            </div>
+            <div class="sidebar-footer">
+                <button id="viewActualBtn" class="btn btn-primary btn-sidebar">View Final Questions</button>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <div class="container">
+                <header>
+                    <h1>Test Question Generation System</h1>
+                    <p class="subtitle">AI-Powered Question and Answer Generation Workflow</p>
+                </header>
+
+                <!-- Step 1: Create Run -->
+        <section class="step" id="step1">
+            <div class="step-header">
+                <span class="step-number">1</span>
+                <h2 id="step1Title">Session Summary</h2>
+            </div>
+            <div class="step-content">
+                <p id="step1Description">Provide a summary or context for test question generation:</p>
+                <textarea id="summaryInput" placeholder="Enter summary here... (e.g., 'Python programming basics including variables, loops, functions, and data structures')" rows="5"></textarea>
+                <div id="createSessionContainer">
+                    <button id="createRunBtn" class="btn btn-primary">Create Session</button>
+                </div>
+                <div id="runInfo" class="run-info" style="display: none;">
+                    <p><strong>Session ID:</strong> <span id="runId"></span></p>
+                    <p><strong>Created:</strong> <span id="runCreated"></span></p>
+                    <div id="stagingSyncInfo" class="staging-sync-info">
+                        <p><strong>Last Staging Change:</strong> <span id="lastStagingChange"></span></p>
+                        <p><strong>Last Sync:</strong> <span id="lastSyncDisplay"></span></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Generate Questions -->
+        <section class="step" id="step2" style="display: none;">
+            <div class="step-header">
+                <span class="step-number">2</span>
+                <h2>Generate Questions</h2>
+            </div>
+            <div class="step-content">
+                <p>Click to generate questions based on your summary using AI (LLM):</p>
+                <div class="input-group">
+                    <label for="numQuestions">Number of questions:</label>
+                    <input type="number" id="numQuestions" min="1" max="20" value="5">
+                </div>
+                <button id="generateQuestionsBtn" class="btn btn-primary">Generate Questions with LLM</button>
+                <div id="questionsLoading" class="loading" style="display: none;">Generating questions with AI...</div>
+                <div id="questionsList" class="questions-list"></div>
+            </div>
+        </section>
+
+        <!-- Step 3: Review Questions -->
+        <section class="step" id="step3" style="display: none;">
+            <div class="step-header">
+                <span class="step-number">3</span>
+                <h2>Review & Approve Questions</h2>
+            </div>
+            <div class="step-content">
+                <p>Review each question and mark as approved or rejected:</p>
+                <div id="questionsReview" class="review-list"></div>
+            </div>
+        </section>
+
+        <!-- Step 4: Generate Answers -->
+        <section class="step" id="step4" style="display: none;">
+            <div class="step-header">
+                <span class="step-number">4</span>
+                <h2>Generate Answers</h2>
+            </div>
+            <div class="step-content">
+                <p>Generate answers for approved questions using AI (LLM):</p>
+                <button id="generateAnswersBtn" class="btn btn-primary">Generate Answers with LLM</button>
+                <div id="answersLoading" class="loading" style="display: none;">Generating answers with AI...</div>
+                <div id="answersList" class="answers-list"></div>
+            </div>
+        </section>
+
+        <!-- Step 5: Review Answers -->
+        <section class="step" id="step5" style="display: none;">
+            <div class="step-header">
+                <span class="step-number">5</span>
+                <h2>Review & Approve Answers</h2>
+            </div>
+            <div class="step-content">
+                <p>Review each answer and mark as approved or rejected:</p>
+                <div id="answersReview" class="review-list"></div>
+            </div>
+        </section>
+
+        <!-- Step 6: Tag Questions -->
+        <section class="step" id="step6" style="display: none;">
+            <div class="step-header">
+                <span class="step-number">6</span>
+                <h2>Tag Questions</h2>
+            </div>
+            <div class="step-content">
+                <p>Add tags to categorize your questions. Type tag names (comma-separated) and press Enter to add:</p>
+                <div id="questionsTagging" class="tagging-list"></div>
+            </div>
+        </section>
+
+        <!-- Step 7: Sync to Actual Tables -->
+        <section class="step" id="step7" style="display: none;">
+            <div class="step-header">
+                <span class="step-number">7</span>
+                <h2>Sync to Final Tables</h2>
+            </div>
+            <div class="step-content">
+                <p>Move approved questions and answers to final tables. This will update, add new, and remove rejected items.</p>
+                <div id="syncInfo" class="run-info" style="display: none;">
+                    <p><strong>Last Sync:</strong> <span id="lastSyncTime"></span></p>
+                </div>
+                <button id="syncToActualBtn" class="btn btn-primary">Sync to Final Tables</button>
+                <div id="syncLoading" class="loading" style="display: none;">Syncing to final tables...</div>
+                <div id="syncResult" style="margin-top: 15px;"></div>
+            </div>
+        </section>
+
+        <!-- View Actual Questions Page -->
+        <section class="step" id="viewActualPage" style="display: none;">
+            <div class="step-header">
+                <h2>View Final Questions & Answers</h2>
+            </div>
+            <div class="step-content">
+                <div class="view-controls">
+                    <select id="filterRunId" class="filter-select">
+                        <option value="">All Sessions</option>
+                    </select>
+                    <button id="refreshActualBtn" class="btn btn-primary">Refresh</button>
+                </div>
+                <div id="actualQuestionsList" class="actual-questions-list"></div>
+            </div>
+        </section>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+                <!-- Success Message -->
+                <div id="successMessage" class="success-message" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+

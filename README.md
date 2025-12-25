@@ -1,14 +1,32 @@
-# LangChain Agent with Custom HTTP Tool
+# Test Question Generation System
 
-This project demonstrates a LangChain-based agent that automatically uses a custom HTTP tool to fetch and answer questions about URL content.
+An AI-powered system for generating test questions and answers using OpenAI's GPT models. This system provides a complete workflow from initial summary to approved questions and answers.
 
 ## Features
 
-- **ReAct Agent**: Uses LangChain's ReAct agent framework that automatically decides when to use tools
-- **Custom HTTP Tool**: A custom tool that fetches content from URLs
-- **Automatic Tool Calling**: The agent internally calls tools without just listing them - it actually executes them
+The system supports a 5-step workflow:
+
+1. **Create Session**: User provides a summary/context for test question generation. The system creates a session (runId) and stores it in the database.
+2. **Generate Questions**: Using OpenAI's LLM, the system generates questions based on the summary. Questions are saved to a staging table and displayed to the user.
+3. **Review Questions**: User reviews each generated question and marks them as approved or rejected. This approval status is saved in the database.
+4. **Generate Answers**: The system generates answers for approved questions using the LLM. Answers are saved to a staging table.
+5. **Review Answers**: User reviews each generated answer and marks them as approved or rejected. Final approval status is saved in the database.
+
+## Tech Stack
+
+- **Backend**: FastAPI (Python)
+- **Database**: SQLite with SQLAlchemy ORM
+- **LLM**: OpenAI GPT-3.5-turbo
+- **Frontend**: HTML, CSS, JavaScript (Vanilla JS)
 
 ## Setup
+
+### Prerequisites
+
+- Python 3.8 or higher
+- OpenAI API key
+
+### Installation
 
 1. **Install dependencies:**
    ```bash
@@ -16,76 +34,125 @@ This project demonstrates a LangChain-based agent that automatically uses a cust
    ```
 
 2. **Set up your OpenAI API key:**
-   - Copy `.env.example` to `.env`
+   - Create a `.env` file in the project root
    - Add your OpenAI API key:
      ```
      OPENAI_API_KEY=your-api-key-here
      ```
 
+3. **Initialize the database:**
+   The database will be automatically created when you first run the application.
+
 ## Usage
 
-Run the agent:
-```bash
-python agent.py
+### Starting the Server
+
+1. **Run the FastAPI server:**
+   ```bash
+   python main.py
+   ```
+   
+   Or using uvicorn directly:
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+2. **Access the application:**
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+   - Frontend UI: Open `static/index.html` in your browser (or serve it via a web server)
+
+   **Note**: For the frontend to work properly with CORS, you should serve the static files through the FastAPI server or use a simple HTTP server.
+
+### Serving Static Files (Optional)
+
+To serve the static files through FastAPI, you can mount them:
+
+```python
+from fastapi.staticfiles import StaticFiles
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 ```
 
-Then enter queries like:
-- "What is the content of https://example.com?"
-- "Fetch and summarize the content from https://www.python.org"
-- "Tell me about the content at https://news.ycombinator.com"
+Or use a simple HTTP server:
 
-The agent will automatically:
-1. Recognize that your query involves a URL
-2. Call the `fetch_url_content` tool internally
-3. Process the fetched content
-4. Return a response based on the content
+```bash
+# Python 3
+python -m http.server 8080 --directory static
 
-## How It Works
+# Then access http://localhost:8080
+```
 
-The project uses LangChain's **ReAct agent** pattern:
-- The agent receives your query
-- It reasons about what tools it needs to use
-- It automatically calls the `fetch_url_content` tool when it detects a URL in your query
-- It processes the tool's response and provides a final answer
+## Database Schema
 
-The key difference from other approaches is that the agent **executes** the tools internally rather than just suggesting which tools could be used.
+The system uses three main tables:
+
+- **runs**: Stores session/run information with summary
+- **question_staging**: Stores generated questions with approval status
+- **answer_staging**: Stores generated answers with approval status
+
+All tables are automatically created when the application starts.
+
+## API Endpoints
+
+### Run Management
+- `POST /api/runs` - Create a new run/session
+- `GET /api/runs/{run_id}` - Get run details
+
+### Questions
+- `POST /api/runs/{run_id}/generate-questions` - Generate questions using LLM
+- `GET /api/runs/{run_id}/questions` - Get all questions for a run
+- `PATCH /api/questions/{question_id}/approval` - Update question approval status
+
+### Answers
+- `POST /api/runs/{run_id}/generate-answers` - Generate answers for approved questions
+- `GET /api/runs/{run_id}/answers` - Get all answers for a run
+- `PATCH /api/answers/{answer_id}/approval` - Update answer approval status
+
+### Health Check
+- `GET /api/health` - Health check endpoint
 
 ## Project Structure
 
-- `agent.py`: Main agent script with ReAct agent setup
-- `http_tool.py`: Custom HTTP tool for fetching URL content
-- `requirements.txt`: Python dependencies
-- `.env.example`: Example environment variable file
-
-## Testing
-
-Run the test script to verify everything is working:
-```bash
-python test_agent.py
+```
+.
+├── main.py              # FastAPI application and endpoints
+├── database.py          # Database models and setup
+├── models.py            # Pydantic models for request/response
+├── llm_service.py       # OpenAI LLM integration
+├── static/
+│   ├── index.html       # Frontend UI
+│   ├── style.css        # Styling
+│   └── app.js           # Frontend JavaScript
+├── requirements.txt     # Python dependencies
+├── README.md           # This file
+└── test_questions.db   # SQLite database (created automatically)
 ```
 
-This will:
-1. Test the HTTP tool directly
-2. Test the agent with a sample query
+## Workflow Example
+
+1. User enters summary: "Python programming basics including variables, loops, functions"
+2. Click "Create Session" → Session ID is generated
+3. Click "Generate Questions" → 5 questions are generated and displayed
+4. User reviews each question and marks them as Approved/Rejected
+5. Click "Generate Answers" → Answers are generated for approved questions
+6. User reviews each answer and marks them as Approved/Rejected
+7. All data is persisted in the database throughout the process
+
+## Configuration
+
+You can modify the following in `llm_service.py`:
+
+- `model`: Change the OpenAI model (default: "gpt-3.5-turbo")
+- `temperature`: Adjust creativity (default: 0.7 for questions, 0.5 for answers)
+- `max_tokens`: Adjust response length limits
 
 ## Troubleshooting
 
-If tools are not being called:
-1. Make sure `verbose=True` in `AgentExecutor` to see the agent's reasoning
-2. Check that your query clearly mentions a URL
-3. Ensure your OpenAI API key is correctly set in `.env`
-4. Verify that the LangChain Hub prompt is accessible (it should pull automatically)
-5. Run `test_agent.py` to verify the tool works independently
-6. Check the verbose output - you should see "Action:" and "Action Input:" when the tool is called
+1. **OpenAI API errors**: Ensure your API key is correct and you have sufficient credits
+2. **Database errors**: Delete `test_questions.db` to reset the database
+3. **CORS errors**: Make sure CORS middleware is enabled (already configured for development)
+4. **Frontend not loading**: Ensure you're accessing the frontend through a web server or the FastAPI static file mount
 
-## Key Points
+## License
 
-- The agent uses **ReAct pattern** which means it will:
-  - **Think** about what to do
-  - **Act** by calling a tool
-  - **Observe** the tool's result
-  - **Think** again and provide a final answer
-
-- The tool is called **automatically** when the agent determines it needs URL content
-- You don't need to explicitly tell the agent to use the tool - it decides based on your query
-
+MIT License
